@@ -1,4 +1,4 @@
-// The starter atlas is deliberately curated. Model-specific electronics repairs
+1// The starter atlas is deliberately curated. Model-specific electronics repairs
 // point readers to the exact-device source instead of pretending one procedure
 // fits every product. Add new guides here without changing the UI code.
 export const guides = [

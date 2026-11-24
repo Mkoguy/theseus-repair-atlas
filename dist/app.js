@@ -1,4 +1,5 @@
 import { guides, categories } from './guides.js'
+import { initAiGuide } from './ai.js'
 
 const $ = selector => document.querySelector(selector)
 const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])
@@ -8,6 +9,43 @@ const state = { query: '', category: 'All', action: 'All', level: 'All', videoOn
 const actions = ['All', 'Repair', 'Replace', 'Patch']
 const levels = ['All', 'Beginner', 'Intermediate', 'Advanced']
 const guideById = new Map(guides.map(guide => [guide.id, guide]))
+const preferenceDefaults = {
+  textSize: '100', palette: 'original', highContrast: false,
+  spaciousReading: false, calmLayout: false, reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+  largeControls: false
+}
+const savedPreferences = readJson('theseus:preferences', {})
+const preferences = { ...preferenceDefaults }
+const allowedTextSizes = ['100', '125', '150', '200']
+const allowedPalettes = ['original', 'blue-amber', 'coral-charcoal', 'monochrome']
+for (const key of Object.keys(preferenceDefaults)) {
+  const value = savedPreferences[key]
+  if (key === 'textSize' && allowedTextSizes.includes(value)) preferences[key] = value
+  else if (key === 'palette' && allowedPalettes.includes(value)) preferences[key] = value
+  else if (typeof preferenceDefaults[key] === 'boolean' && typeof value === 'boolean') preferences[key] = value
+}
+if (!savedPreferences.textSize && readJson('theseus:largeText', false)) preferences.textSize = '125'
+
+// Apply choices to the root so the same settings affect the catalogue and guides.
+function applyPreferences(message = '') {
+  const root = document.documentElement
+  root.dataset.textSize = preferences.textSize
+  root.dataset.palette = preferences.palette
+  for (const key of ['highContrast', 'spaciousReading', 'calmLayout', 'reduceMotion', 'largeControls']) root.dataset[key] = String(preferences[key])
+  document.querySelectorAll('[data-setting]').forEach(control => {
+    const value = preferences[control.dataset.setting]
+    if (control.type === 'checkbox') control.checked = value
+    else if (control.type === 'radio') control.checked = control.value === value
+    else control.value = value
+  })
+  $('#text-toggle').setAttribute('aria-pressed', String(preferences.textSize !== '100'))
+  if (message) $('#settings-status').textContent = message
+}
+
+function savePreferences(message = 'Your choices were saved on this browser.') {
+  try { localStorage.setItem('theseus:preferences', JSON.stringify(preferences)) } catch { message = 'Your changes are active for this visit, but this browser could not save them.' }
+  applyPreferences(message)
+}
 
 // These small drawings are original vector artwork. They keep the catalogue
 // recognizable without relying on third-party product photos or hotlinked media.
@@ -29,9 +67,10 @@ const persistProgress = (id, set) => localStorage.setItem(progressKey(id), JSON.
 
 function renderCategories() {
   const symbols = { Electronics: '⌁', Home: '⌂', Clothing: '✳', Bikes: '◉' }
+  const descriptions = { Electronics: 'Screens and devices', Home: 'Everyday spaces', Clothing: 'Seams and fasteners', Bikes: 'Keep rolling' }
   $('#category-grid').innerHTML = categories.filter(name => name !== 'All').map((name, index) => {
     const count = guides.filter(guide => guide.category === name).length
-    return `<button class="category-tile" type="button" data-category="${name}"><span class="category-number">0${index + 1} / REPAIR WORLD</span><span class="tile-mark" aria-hidden="true">${symbols[name]}</span><span class="category-name">${name}</span><span class="category-count">${count} ${count === 1 ? 'guide' : 'guides'} to explore</span></button>`
+    return `<button class="category-tile" type="button" data-category="${name}"><span class="category-number">0${index + 1} / REPAIR WORLD</span><span class="tile-mark" aria-hidden="true">${symbols[name]}</span><span class="category-name">${name}</span><span class="category-description">${descriptions[name]}</span><span class="category-count">Explore ${count} ${count === 1 ? 'guide' : 'guides'}</span></button>`
   }).join('')
 }
 
@@ -73,12 +112,15 @@ function renderCatalog() {
   $('#empty-state').hidden = results.length !== 0
   $('#result-title').textContent = state.savedOnly ? 'Saved guides' : state.query ? `Results for “${state.query}”` : state.category !== 'All' ? state.category : 'All guides'
   $('#result-count').textContent = `${results.length} ${results.length === 1 ? 'guide' : 'guides'}`
+  $('#browse-summary-title').textContent = `${results.length} ${results.length === 1 ? 'guide' : 'guides'} ${state.query || state.category !== 'All' || state.action !== 'All' || state.level !== 'All' ? 'found' : 'ready to explore'}`
   $('#saved-count').textContent = String(saved.size)
   $('#saved-count').hidden = saved.size === 0
   $('#saved-nav').setAttribute('aria-pressed', String(state.savedOnly))
+  document.querySelectorAll('.market-nav [data-category]').forEach(button => button.setAttribute('aria-pressed', String(state.category === button.dataset.category && !state.savedOnly)))
   $('#active-filters').innerHTML = [state.category !== 'All' && state.category, state.action !== 'All' && state.action, state.level !== 'All' && state.level, state.videoOnly && 'Video only', state.savedOnly && 'Saved'].filter(Boolean).map(label => `<span class="filter-chip">${escapeHtml(label)}</span>`).join('')
   const searchUrl = state.query ? `https://www.ifixit.com/Search?query=${encodeURIComponent(state.query)}` : 'https://www.ifixit.com/'
   $('#external-search').href = searchUrl
+  $('#wider-search-link').href = searchUrl
   renderFilters()
 }
 
@@ -86,7 +128,7 @@ function guideMarkup(guide) {
   const checked = getProgress(guide.id)
   const pct = Math.round(checked.size / guide.steps.length * 100)
   const videoContent = guide.video ? `<section class="video-panel" aria-labelledby="video-heading"><div class="video-panel-head"><div><h2 id="video-heading">See the repair</h2><p>${escapeHtml(guide.video.label)} · ${escapeHtml(guide.video.provider)}</p></div><span class="video-pill">Video guide</span></div><div class="video-stage" id="video-stage">${guide.video.id ? `<button type="button" class="video-play" data-play-video="${guide.id}" aria-label="Play ${escapeHtml(guide.video.label)}"><span class="play-circle" aria-hidden="true">▶</span><span>Play the video guide</span></button>` : `<a class="video-play" href="${escapeHtml(guide.video.url)}" target="_blank" rel="noopener noreferrer" aria-label="Watch ${escapeHtml(guide.video.label)} on ${escapeHtml(guide.video.provider)}"><span class="play-circle" aria-hidden="true">▶</span><span>Watch on ${escapeHtml(guide.video.provider)}</span></a>`}</div><div class="video-source">Video by ${escapeHtml(guide.video.provider)}. <a href="${escapeHtml(guide.video.url)}" target="_blank" rel="noopener noreferrer">Open original video</a> if playback is unavailable.</div></section>` : ''
-  return `<div class="guide-shell"><nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#home">Home</a><span aria-hidden="true">/</span><a href="#catalog">Guides</a><span aria-hidden="true">/</span><span aria-current="page">${escapeHtml(guide.category)}</span></nav><div class="guide-hero"><div class="guide-hero-copy"><span class="section-kicker">${escapeHtml(guide.category)} / ${escapeHtml(guide.action)}</span><h1 class="guide-title" id="guide-title" tabindex="-1">${escapeHtml(guide.title)}</h1><p>${escapeHtml(guide.summary)}</p><div class="guide-meta"><span>◷ ${guide.minutes} minutes</span><span>◎ ${escapeHtml(guide.difficulty)}</span><span>${guide.steps.length} steps</span></div><div class="guide-hero-actions"><button class="button button-primary" type="button" data-start-guide>Start guide</button><button class="button button-secondary" type="button" data-save="${guide.id}" aria-pressed="${saved.has(guide.id)}">${saved.has(guide.id) ? '♥ Saved' : '♡ Save guide'}</button><button class="button button-secondary" type="button" data-share>Copy link</button></div></div><div class="guide-hero-art art-${guide.category}" role="img" aria-label="Illustration of ${escapeHtml(guide.title.toLowerCase())}">${art(guide)}</div></div><div class="guide-main"><div class="guide-content"><section class="guide-panel" aria-labelledby="before-heading"><h2 id="before-heading">Before you begin</h2><p>${escapeHtml(guide.intro)}</p></section><section class="guide-panel guide-warning" aria-labelledby="safety-heading"><strong id="safety-heading">Safety first</strong><p>${escapeHtml(guide.safety)}</p></section>${videoContent}<section class="steps-panel" id="steps" aria-labelledby="steps-heading"><h2 id="steps-heading">Follow the path</h2><div class="progress-track" role="progressbar" aria-label="Guide progress" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-label" id="progress-label">${checked.size} of ${guide.steps.length} steps complete</div><ol class="step-list">${guide.steps.map(([title, text], index) => `<li class="step-item ${checked.has(index) ? 'done' : ''}"><input class="step-check" type="checkbox" data-step="${index}" data-guide-id="${guide.id}" aria-label="Mark step ${index + 1}, ${escapeHtml(title)}, complete" ${checked.has(index) ? 'checked' : ''}><div><div class="step-number">STEP ${String(index + 1).padStart(2, '0')}</div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p></div></li>`).join('')}</ol></section><div class="guide-bottom"><a class="button button-secondary" href="${escapeHtml(guide.source.url)}" target="_blank" rel="noopener noreferrer">Read the full ${escapeHtml(guide.source.label)}</a><button class="button button-secondary" type="button" data-print>Print guide</button></div></div><aside class="guide-aside" aria-label="Tools, parts, and source"><div class="guide-aside-panel"><div class="aside-caption">GET READY</div><h2>What you'll need</h2><ul class="supply-list">${guide.tools.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div class="guide-aside-panel"><div class="aside-caption">FIND THE FIT</div><h2>Parts & materials</h2><ul class="supply-list">${guide.parts.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul><a class="aside-link" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(guide.partsQuery)}" target="_blank" rel="noopener noreferrer">Compare parts on eBay</a>${guide.category === 'Electronics' ? '<a class="aside-link" href="https://www.ifixit.com/Parts" target="_blank" rel="noopener noreferrer">Browse iFixit parts</a>' : ''}<p class="parts-note">These are search links, not exact-match listings. Check your model, measurements, and seller before ordering.</p></div><div class="guide-aside-panel source-panel"><div class="aside-caption">THE DEEPER GUIDE</div><h2>Expert source</h2><p class="parts-note">Our overview helps you start. The linked original has detailed photos and model-specific notes.</p><a class="aside-link" href="${escapeHtml(guide.source.url)}" target="_blank" rel="noopener noreferrer">Open ${escapeHtml(guide.source.label)}</a></div></aside></div></div>`
+  return `<div class="guide-shell"><nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#home">Home</a><span aria-hidden="true">/</span><a href="#guides">Guides</a><span aria-hidden="true">/</span><span aria-current="page">${escapeHtml(guide.category)}</span></nav><div class="guide-hero"><div class="guide-hero-copy"><span class="section-kicker">${escapeHtml(guide.category)} / ${escapeHtml(guide.action)}</span><h1 class="guide-title" id="guide-title" tabindex="-1">${escapeHtml(guide.title)}</h1><p>${escapeHtml(guide.summary)}</p><div class="guide-meta"><span>◷ ${guide.minutes} minutes</span><span>◎ ${escapeHtml(guide.difficulty)}</span><span>${guide.steps.length} steps</span></div><div class="guide-hero-actions"><button class="button button-primary" type="button" data-start-guide>Start guide</button><button class="button button-secondary" type="button" data-save="${guide.id}" aria-pressed="${saved.has(guide.id)}">${saved.has(guide.id) ? '♥ Saved' : '♡ Save guide'}</button><button class="button button-secondary" type="button" data-share>Copy link</button></div></div><div class="guide-hero-art art-${guide.category}" role="img" aria-label="Illustration of ${escapeHtml(guide.title.toLowerCase())}">${art(guide)}</div></div><div class="guide-main"><div class="guide-content"><section class="guide-panel" aria-labelledby="before-heading"><h2 id="before-heading">Before you begin</h2><p>${escapeHtml(guide.intro)}</p></section><section class="guide-panel guide-warning" aria-labelledby="safety-heading"><strong id="safety-heading">Safety first</strong><p>${escapeHtml(guide.safety)}</p></section>${videoContent}<section class="steps-panel" id="steps" aria-labelledby="steps-heading"><h2 id="steps-heading">Follow the path</h2><div class="progress-track" role="progressbar" aria-label="Guide progress" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-label" id="progress-label">${checked.size} of ${guide.steps.length} steps complete</div><ol class="step-list">${guide.steps.map(([title, text], index) => `<li class="step-item ${checked.has(index) ? 'done' : ''}"><input class="step-check" type="checkbox" data-step="${index}" data-guide-id="${guide.id}" aria-label="Mark step ${index + 1}, ${escapeHtml(title)}, complete" ${checked.has(index) ? 'checked' : ''}><div><div class="step-number">STEP ${String(index + 1).padStart(2, '0')}</div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p></div></li>`).join('')}</ol></section><div class="guide-bottom"><a class="button button-secondary" href="${escapeHtml(guide.source.url)}" target="_blank" rel="noopener noreferrer">Read the full ${escapeHtml(guide.source.label)}</a><button class="button button-secondary" type="button" data-print>Print guide</button></div></div><aside class="guide-aside" aria-label="Tools, parts, and source"><div class="guide-aside-panel"><div class="aside-caption">GET READY</div><h2>What you'll need</h2><ul class="supply-list">${guide.tools.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div class="guide-aside-panel"><div class="aside-caption">FIND THE FIT</div><h2>Parts & materials</h2><ul class="supply-list">${guide.parts.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul><a class="aside-link" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(guide.partsQuery)}" target="_blank" rel="noopener noreferrer">Compare parts on eBay</a>${guide.category === 'Electronics' ? '<a class="aside-link" href="https://www.ifixit.com/Parts" target="_blank" rel="noopener noreferrer">Browse iFixit parts</a>' : ''}<p class="parts-note">These are search links, not exact-match listings. Check your model, measurements, and seller before ordering.</p></div><div class="guide-aside-panel source-panel"><div class="aside-caption">THE DEEPER GUIDE</div><h2>Expert source</h2><p class="parts-note">Our overview helps you start. The linked original has detailed photos and model-specific notes.</p><a class="aside-link" href="${escapeHtml(guide.source.url)}" target="_blank" rel="noopener noreferrer">Open ${escapeHtml(guide.source.label)}</a></div></aside></div></div>`
 }
 
 function renderGuide(guide) {
@@ -95,8 +137,34 @@ function renderGuide(guide) {
 }
 
 function route() {
-  const hash = decodeURIComponent(location.hash.slice(1))
+  let hash
+  try { hash = decodeURIComponent(location.hash.slice(1)) } catch { hash = '' }
   const guide = hash.startsWith('guide/') ? guideById.get(hash.slice(6)) : null
+  const view = hash === 'settings' ? 'settings' : hash === 'ai' ? 'ai' : guide ? 'guide' : hash === 'browse' || hash === 'catalog' ? 'browse' : hash === 'guides' || hash === 'saved' ? 'guides' : 'home'
+  document.body.dataset.view = view
+  $('#settings-view').hidden = hash !== 'settings'
+  $('#ai-view').hidden = hash !== 'ai'
+  document.querySelectorAll('.header-actions a,.market-nav a').forEach(link => {
+    const active = link.getAttribute('href') === `#${view}`
+    if (active) link.setAttribute('aria-current', 'page')
+    else link.removeAttribute('aria-current')
+  })
+  if (hash === 'ai') {
+    $('#home-view').hidden = true
+    $('#guide-view').hidden = true
+    document.title = 'AI guide maker — Theseus'
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    $('#ai-title').focus()
+    return
+  }
+  if (hash === 'settings') {
+    $('#home-view').hidden = true
+    $('#guide-view').hidden = true
+    document.title = 'Accessibility settings — Theseus'
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    $('#settings-title').focus()
+    return
+  }
   if (guide) {
     $('#home-view').hidden = true
     $('#guide-view').hidden = false
@@ -107,8 +175,9 @@ function route() {
     $('#guide-view').hidden = true
     $('#home-view').hidden = false
     document.title = 'Theseus — keep the story, fix the thing'
-    if (hash === 'catalog' || hash === 'method') requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView())
-    else if (hash === 'saved') { state.savedOnly = true; renderCatalog(); requestAnimationFrame(() => $('#catalog').scrollIntoView()) }
+    if (hash === 'saved') { state.savedOnly = true; renderCatalog() }
+    if (view === 'browse' || view === 'guides') window.scrollTo({ top: 0, behavior: 'instant' })
+    else if (hash === 'method') requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView())
     else if (hash === 'home' || !hash) window.scrollTo({ top: 0, behavior: 'instant' })
   }
 }
@@ -118,26 +187,33 @@ function search(value) {
   state.savedOnly = false
   $('#header-query').value = state.query
   $('#hero-query').value = state.query
+  $('#browse-query').value = state.query
   renderCatalog()
-  if (location.hash !== '#catalog') location.hash = 'catalog'
-  else $('#catalog').scrollIntoView()
+  if (location.hash !== '#browse') location.hash = 'browse'
+  else window.scrollTo({ top: 0, behavior: 'instant' })
 }
 
 function clearFilters() {
   Object.assign(state, { query: '', category: 'All', action: 'All', level: 'All', videoOnly: false, savedOnly: false, sort: 'featured' })
   $('#header-query').value = ''
   $('#hero-query').value = ''
+  $('#browse-query').value = ''
   renderCatalog()
 }
 
 document.addEventListener('submit', event => {
-  if (event.target.id !== 'header-search' && event.target.id !== 'hero-search') return
+  if (!['header-search', 'hero-search', 'browse-search'].includes(event.target.id)) return
   event.preventDefault()
   search(event.target.querySelector('input[type="search"]').value)
 })
 
 document.addEventListener('change', event => {
   const target = event.target
+  if (target.dataset.setting) {
+    const key = target.dataset.setting
+    preferences[key] = target.type === 'checkbox' ? target.checked : target.value
+    savePreferences()
+  }
   if (target.dataset.filter) { state[target.dataset.filter] = target.value; state.savedOnly = false; renderCatalog() }
   if (target.id === 'video-filter') { state.videoOnly = target.checked; state.savedOnly = false; renderCatalog() }
   if (target.id === 'sort-select') { state.sort = target.value; renderCatalog() }
@@ -158,7 +234,19 @@ document.addEventListener('change', event => {
 document.addEventListener('click', async event => {
   const target = event.target.closest('button,a')
   if (!target) return
-  if (target.dataset.category) { state.category = target.dataset.category; state.savedOnly = false; renderCatalog(); location.hash = 'catalog'; $('#catalog').scrollIntoView() }
+  if (target.dataset.quickSearch) search(target.dataset.quickSearch)
+  if (target.dataset.preset) {
+    Object.assign(preferences, preferenceDefaults)
+    if (target.dataset.preset === 'low-vision') Object.assign(preferences, { textSize: '150', highContrast: true, largeControls: true })
+    if (target.dataset.preset === 'calm') Object.assign(preferences, { spaciousReading: true, calmLayout: true, reduceMotion: true })
+    savePreferences(`${target.querySelector('strong')?.textContent || 'Preset'} settings applied and saved.`)
+  }
+  if (target.id === 'reset-accessibility') { Object.assign(preferences, preferenceDefaults); savePreferences('Original settings restored.') }
+  if (target.dataset.category) {
+    Object.assign(state, { category: target.dataset.category, query: '', action: 'All', level: 'All', videoOnly: false, savedOnly: false })
+    $('#header-query').value = ''; $('#hero-query').value = ''; $('#browse-query').value = ''
+    renderCatalog(); location.hash = 'guides'; window.scrollTo({ top: 0, behavior: 'instant' })
+  }
   if (target.dataset.save) {
     saved.has(target.dataset.save) ? saved.delete(target.dataset.save) : saved.add(target.dataset.save)
     persistSaved(); renderCatalog()
@@ -168,14 +256,13 @@ document.addEventListener('click', async event => {
   if (target.id === 'saved-nav') {
     state.savedOnly = !state.savedOnly
     state.query = ''
-    $('#header-query').value = ''; $('#hero-query').value = ''
-    renderCatalog(); location.hash = 'catalog'; $('#catalog').scrollIntoView()
+    $('#header-query').value = ''; $('#hero-query').value = ''; $('#browse-query').value = ''
+    renderCatalog(); location.hash = 'guides'; window.scrollTo({ top: 0, behavior: 'instant' })
   }
   if (target.id === 'clear-filters' || target.id === 'empty-reset') clearFilters()
   if (target.id === 'text-toggle') {
-    const enabled = document.documentElement.classList.toggle('comfort-text')
-    target.setAttribute('aria-pressed', String(enabled))
-    localStorage.setItem('theseus:largeText', String(enabled))
+    preferences.textSize = preferences.textSize === '100' ? '125' : '100'
+    savePreferences(preferences.textSize === '100' ? 'Standard text size restored.' : 'Larger text is on.')
   }
   if (target.dataset.startGuide !== undefined) $('#steps')?.scrollIntoView()
   if (target.dataset.print !== undefined) window.print()
@@ -199,9 +286,8 @@ document.addEventListener('keydown', event => {
 
 renderCategories()
 renderCatalog()
-if (localStorage.getItem('theseus:largeText') === 'true') {
-  document.documentElement.classList.add('comfort-text')
-  $('#text-toggle').setAttribute('aria-pressed', 'true')
-}
+applyPreferences()
+initAiGuide({ escapeHtml })
 window.addEventListener('hashchange', route)
 route()
+
