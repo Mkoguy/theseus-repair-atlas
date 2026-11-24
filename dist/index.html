@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b4144">
+    <meta name="description" content="Theseus is a free repair atlas with practical guides, trusted videos, and links to find the right parts.">
+    <title>Theseus — keep the story, fix the thing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <div class="announcement"><span class="announcement-star" aria-hidden="true">✳</span> The free repair atlas for things worth keeping <span class="announcement-star" aria-hidden="true">✳</span></div>
+
+    <header class="site-header">
+      <div class="header-inner shell">
+        <a class="brand" href="#home" aria-label="Theseus home">
+          <svg class="brand-mark" viewBox="0 0 46 46" fill="none" aria-hidden="true"><path d="M5 24c4-12 12-18 21-17 8 0 14 5 15 13 1 8-5 15-14 17-8 2-15-3-15-10 0-6 4-10 10-10 5 0 8 3 8 7 0 3-2 5-5 5" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M4 39h38" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>
+          <span>theseus<span class="brand-period">.</span></span>
+        </a>
+        <form class="header-search" id="header-search" role="search">
+          <label class="sr-only" for="header-query">Search repairs</label>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input id="header-query" type="search" placeholder="What needs fixing?" autocomplete="off">
+          <button type="submit">Search</button>
+        </form>
+        <nav class="header-actions" aria-label="Main navigation">
+          <a href="#catalog">Explore guides</a>
+          <button id="saved-nav" class="saved-nav" type="button" aria-pressed="false"><span aria-hidden="true">♡</span> Saved <span id="saved-count" class="saved-count" hidden>0</span></button>
+          <button id="text-toggle" class="text-toggle" type="button" aria-pressed="false" title="Increase text size">A<span>+</span><span class="sr-only"> Toggle larger text</span></button>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <div id="home-view">
+        <section class="hero shell" aria-labelledby="hero-title">
+          <div class="hero-copy">
+            <span class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> The repair atlas</span>
+            <h1 id="hero-title">Keep the story.<br><em>Fix the thing.</em></h1>
+            <p>From screens to seams, find a clear path from “it’s broken” to “I fixed it.” Free guides, real videos, and a smarter way to find the right parts.</p>
+            <form id="hero-search" class="hero-search" role="search">
+              <label class="sr-only" for="hero-query">Search all repair guides</label>
+              <input id="hero-query" type="search" placeholder="Try “flat tire” or “zipper”" autocomplete="off">
+              <button type="submit">Find a fix</button>
+            </form>
+            <div class="hero-proof"><span class="proof-dot" aria-hidden="true"></span> No account. No paywall. Just a place to start.</div>
+          </div>
+          <div class="hero-art" role="img" aria-label="A patched jacket, bicycle tire, laptop, faucet, and repaired cup beside a small ship"></div>
+          <div class="hero-corner" aria-hidden="true">REPAIR IS A WAY FORWARD <span>✳</span></div>
+        </section>
+
+        <section class="category-section shell" aria-labelledby="category-title">
+          <div class="section-kicker">START SOMEWHERE</div>
+          <div class="section-head"><h2 id="category-title">What are you fixing?</h2><p>Pick a world. Find your way in.</p></div>
+          <div class="category-grid" id="category-grid"></div>
+        </section>
+
+        <section class="catalog-section" id="catalog" aria-labelledby="catalog-title">
+          <div class="shell">
+            <div class="catalog-intro"><div><span class="section-kicker">THE GOOD STUFF</span><h2 id="catalog-title">Find your next fix<span class="heading-period">.</span></h2><p>Practical first steps, with the original expert source close by.</p></div><div class="catalog-stamp" aria-hidden="true">LEARN<br>REPAIR<br>REPEAT</div></div>
+            <div class="catalog-layout">
+              <aside class="filter-panel" aria-label="Guide filters">
+                <div class="filter-head"><strong>Refine the atlas</strong><button id="clear-filters" type="button">Clear all</button></div>
+                <fieldset><legend>Category</legend><div class="filter-options" id="category-filters"></div></fieldset>
+                <fieldset><legend>Type of fix</legend><div class="filter-options" id="action-filters"></div></fieldset>
+                <fieldset><legend>Experience level</legend><div class="filter-options" id="level-filters"></div></fieldset>
+                <label class="filter-check video-filter"><input id="video-filter" type="checkbox"><span>Video guide available</span></label>
+              </aside>
+              <div class="catalog-main">
+                <div class="result-toolbar"><div><strong id="result-title">All guides</strong><span id="result-count" role="status" aria-live="polite"></span></div><label for="sort-select">Sort by <select id="sort-select"><option value="featured">Featured</option><option value="quickest">Quickest first</option><option value="az">A to Z</option></select></label></div>
+                <div class="active-filters" id="active-filters" aria-live="polite"></div>
+                <div class="guide-grid" id="guide-grid"></div>
+                <div class="empty-state" id="empty-state" hidden><div class="empty-symbol" aria-hidden="true">⌁</div><h3>No exact match yet.</h3><p>We’re growing the atlas. Try another term, or search the wider repair community for your exact item.</p><div class="empty-actions"><button id="empty-reset" class="button button-primary" type="button">See all guides</button><a id="external-search" class="button button-secondary" href="https://www.ifixit.com/" target="_blank" rel="noopener noreferrer">Search iFixit</a></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="method-section shell" id="method" aria-labelledby="method-title"><div class="method-art" aria-hidden="true"><div class="method-circle circle-one"></div><div class="method-circle circle-two"></div><div class="method-stitch"></div><span>↝</span></div><div class="method-copy"><span class="section-kicker">A BETTER FIRST STEP</span><h2 id="method-title">Make the repair<br><em>less mysterious.</em></h2><p>Theseus brings the decision, the steps, the video, and the parts search into one calm place. The final details still come from the maker’s instructions or the linked expert guide.</p><ul><li><span>01</span> Know what you’re getting into</li><li><span>02</span> Gather the right tools and parts</li><li><span>03</span> Follow a repair path you can trust</li></ul></div></section>
+      </div>
+
+      <section id="guide-view" class="guide-view" hidden aria-live="off"></section>
+    </main>
+
+    <footer class="site-footer"><div class="shell footer-inner"><div><a class="brand footer-brand" href="#home" aria-label="Theseus home"><span>theseus<span class="brand-period">.</span></span></a><p>Keep what matters in motion.</p></div><div class="footer-links"><a href="#catalog">Explore guides</a><a href="#method">How it works</a><a href="https://www.ifixit.com/" target="_blank" rel="noopener noreferrer">More repairs at iFixit</a></div><div class="footer-note">A free student project. Parts links open external stores; check compatibility before buying. Videos and expert guides belong to their creators.</div></div></footer>
+  </body>
+</html>
