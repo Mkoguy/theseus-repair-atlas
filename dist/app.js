@@ -1,6 +1,7 @@
-import { guides, categories } from './guides.js'
+import { guides, categories } from './guides.js?v=stars'
 import { initAiGuide } from './ai.js'
-import { createPersonalGuides } from './my-guides.js'
+import { createPersonalGuides } from './my-guides.js?v=photos'
+import { difficultyMarkup } from './guide-difficulty.js'
 
 const $ = selector => document.querySelector(selector)
 const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])
@@ -8,7 +9,7 @@ const readJson = (key, fallback) => { try { return JSON.parse(localStorage.getIt
 const saved = new Set(readJson('theseus:saved', []))
 const state = { query: '', category: 'All', action: 'All', level: 'All', videoOnly: false, savedOnly: false, sort: 'featured' }
 const actions = ['All', 'Repair', 'Replace', 'Patch']
-const levels = ['All', 'Beginner', 'Intermediate', 'Advanced']
+const levels = ['All', ...[...new Set(guides.map(guide => guide.difficulty))].sort((a, b) => a - b)]
 const guideById = new Map(guides.map(guide => [guide.id, guide]))
 const preferenceDefaults = {
   textSize: '100', palette: 'original', highContrast: false, darkMode: false,
@@ -70,7 +71,10 @@ const personalGuides = createPersonalGuides({
 })
 
 function renderFilters() {
-  const create = (values, field, count) => values.map(value => `<label class="filter-check"><input type="radio" name="${field}" value="${value}" data-filter="${field}" ${state[field] === value ? 'checked' : ''}><span>${value === 'All' ? 'All' : value}</span>${count && value !== 'All' ? `<small>${guides.filter(guide => guide.category === value).length}</small>` : ''}</label>`).join('')
+  const create = (values, field, count) => values.map(value => {
+    const label = field === 'level' && value !== 'All' ? difficultyMarkup(value) : value
+    return `<label class="filter-check"><input type="radio" name="${field}" value="${value}" data-filter="${field}" ${state[field] === value ? 'checked' : ''}><span>${label}</span>${count && value !== 'All' ? `<small>${guides.filter(guide => guide.category === value).length}</small>` : ''}</label>`
+  }).join('')
   $('#category-filters').innerHTML = create(categories, 'category', true)
   $('#action-filters').innerHTML = create(actions, 'action', false)
   $('#level-filters').innerHTML = create(levels, 'level', false)
@@ -97,7 +101,7 @@ function filteredGuides() {
 
 function card(guide) {
   const isSaved = saved.has(guide.id)
-  return `<article class="guide-card"><div class="card-art art-${guide.category}">${art(guide)}<span class="art-label">${escapeHtml(guide.category.toUpperCase())} / ${escapeHtml(guide.action.toUpperCase())}</span><button class="card-save" type="button" data-save="${guide.id}" aria-label="${isSaved ? 'Remove' : 'Save'} ${escapeHtml(guide.title)} ${isSaved ? 'from' : 'to'} saved guides" aria-pressed="${isSaved}">${isSaved ? '♥' : '♡'}</button></div><div class="card-body"><div class="card-topline"><span>${escapeHtml(guide.action)} guide</span>${guide.video ? '<span class="video-pill">◉ Video</span>' : ''}</div><h3>${escapeHtml(guide.title)}</h3><p>${escapeHtml(guide.summary)}</p><div class="card-meta"><span>◷ ${guide.minutes} min</span><span>◎ ${escapeHtml(guide.difficulty)}</span></div><div class="card-bottom"><span>${escapeHtml(guide.category)}</span><a class="open-guide" href="#guide/${guide.id}" aria-label="Open guide: ${escapeHtml(guide.title)}">Open guide</a></div></div></article>`
+  return `<article class="guide-card"><div class="card-art art-${guide.category}">${art(guide)}<span class="art-label">${escapeHtml(guide.category.toUpperCase())} / ${escapeHtml(guide.action.toUpperCase())}</span><button class="card-save" type="button" data-save="${guide.id}" aria-label="${isSaved ? 'Remove' : 'Save'} ${escapeHtml(guide.title)} ${isSaved ? 'from' : 'to'} saved guides" aria-pressed="${isSaved}">${isSaved ? '♥' : '♡'}</button></div><div class="card-body"><div class="card-topline"><span>${escapeHtml(guide.action)} guide</span>${guide.video ? '<span class="video-pill">◉ Video</span>' : ''}</div><h3>${escapeHtml(guide.title)}</h3><p>${escapeHtml(guide.summary)}</p><div class="card-meta"><span>◷ ${guide.minutes} min</span>${difficultyMarkup(guide.difficulty)}</div><div class="card-bottom"><span>${escapeHtml(guide.category)}</span><a class="open-guide" href="#guide/${guide.id}" aria-label="Open guide: ${escapeHtml(guide.title)}">Open guide</a></div></div></article>`
 }
 
 function renderCatalog() {
@@ -114,7 +118,7 @@ function renderCatalog() {
   $('#saved-count').textContent = String(saved.size)
   $('#saved-count').hidden = saved.size === 0
   document.querySelectorAll('#guide-categories [data-category]').forEach(button => button.setAttribute('aria-pressed', String(state.category === button.dataset.category)))
-  $('#active-filters').innerHTML = [state.category !== 'All' && state.category, state.action !== 'All' && state.action, state.level !== 'All' && state.level, state.videoOnly && 'Video only', state.savedOnly && 'Saved'].filter(Boolean).map(label => `<span class="filter-chip">${escapeHtml(label)}</span>`).join('')
+  $('#active-filters').innerHTML = [state.category !== 'All' && state.category, state.action !== 'All' && state.action, state.level !== 'All' && `Difficulty ${state.level}/5`, state.videoOnly && 'Video only', state.savedOnly && 'Saved'].filter(Boolean).map(label => `<span class="filter-chip">${escapeHtml(label)}</span>`).join('')
   const searchUrl = state.query ? `https://www.ifixit.com/Search?query=${encodeURIComponent(state.query)}` : 'https://www.ifixit.com/'
   $('#external-search').href = searchUrl
   $('#wider-search-link').href = searchUrl
@@ -125,7 +129,7 @@ function guideMarkup(guide) {
   const checked = getProgress(guide.id)
   const pct = Math.round(checked.size / guide.steps.length * 100)
   const videoContent = guide.video ? `<section class="video-panel" aria-labelledby="video-heading"><div class="video-panel-head"><div><h2 id="video-heading">See the repair</h2><p>${escapeHtml(guide.video.label)} · ${escapeHtml(guide.video.provider)}</p></div><span class="video-pill">Video guide</span></div><div class="video-stage" id="video-stage">${guide.video.id ? `<button type="button" class="video-play" data-play-video="${guide.id}" aria-label="Play ${escapeHtml(guide.video.label)}"><span class="play-circle" aria-hidden="true">▶</span><span>Play the video guide</span></button>` : `<a class="video-play" href="${escapeHtml(guide.video.url)}" target="_blank" rel="noopener noreferrer" aria-label="Watch ${escapeHtml(guide.video.label)} on ${escapeHtml(guide.video.provider)}"><span class="play-circle" aria-hidden="true">▶</span><span>Watch on ${escapeHtml(guide.video.provider)}</span></a>`}</div><div class="video-source">Video by ${escapeHtml(guide.video.provider)}. <a href="${escapeHtml(guide.video.url)}" target="_blank" rel="noopener noreferrer">Open original video</a> if playback is unavailable.</div></section>` : ''
-  return `<div class="guide-shell"><nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#home">Home</a><span aria-hidden="true">/</span><a href="#guides">Guides</a><span aria-hidden="true">/</span><span aria-current="page">${escapeHtml(guide.category)}</span></nav><div class="guide-hero"><div class="guide-hero-copy"><span class="section-kicker">${escapeHtml(guide.category)} / ${escapeHtml(guide.action)}</span><h1 class="guide-title" id="guide-title" tabindex="-1">${escapeHtml(guide.title)}</h1><p>${escapeHtml(guide.summary)}</p><div class="guide-meta"><span>◷ ${guide.minutes} minutes</span><span>◎ ${escapeHtml(guide.difficulty)}</span><span>${guide.steps.length} steps</span></div><div class="guide-hero-actions"><button class="button button-primary" type="button" data-start-guide>Start guide</button><button class="button button-secondary" type="button" data-save="${guide.id}" aria-pressed="${saved.has(guide.id)}">${saved.has(guide.id) ? '♥ Saved' : '♡ Save guide'}</button><button class="button button-secondary" type="button" data-share>Copy link</button></div></div><div class="guide-hero-art art-${guide.category}" role="img" aria-label="Illustration of ${escapeHtml(guide.title.toLowerCase())}">${art(guide)}</div></div><div class="guide-main"><div class="guide-content"><section class="guide-panel" aria-labelledby="before-heading"><h2 id="before-heading">Before you begin</h2><p>${escapeHtml(guide.intro)}</p></section><section class="guide-panel guide-warning" aria-labelledby="safety-heading"><strong id="safety-heading">Safety first</strong><p>${escapeHtml(guide.safety)}</p></section>${videoContent}<section class="steps-panel" id="steps" aria-labelledby="steps-heading"><h2 id="steps-heading">Follow the path</h2><div class="progress-track" role="progressbar" aria-label="Guide progress" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-label" id="progress-label">${checked.size} of ${guide.steps.length} steps complete</div><ol class="step-list">${guide.steps.map(([title, text], index) => `<li class="step-item ${checked.has(index) ? 'done' : ''}"><input class="step-check" type="checkbox" data-step="${index}" data-guide-id="${guide.id}" aria-label="Mark step ${index + 1}, ${escapeHtml(title)}, complete" ${checked.has(index) ? 'checked' : ''}><div><div class="step-number">STEP ${String(index + 1).padStart(2, '0')}</div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p></div></li>`).join('')}</ol></section><div class="guide-bottom"><a class="button button-secondary" href="${escapeHtml(guide.source.url)}" target="_blank" rel="noopener noreferrer">Read the full ${escapeHtml(guide.source.label)}</a><button class="button button-secondary" type="button" data-print>Print guide</button></div></div><aside class="guide-aside" aria-label="Tools, parts, and source"><div class="guide-aside-panel"><div class="aside-caption">GET READY</div><h2>What you'll need</h2><ul class="supply-list">${guide.tools.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div class="guide-aside-panel"><div class="aside-caption">FIND THE FIT</div><h2>Parts & materials</h2><ul class="supply-list">${guide.parts.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul><a class="aside-link" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(guide.partsQuery)}" target="_blank" rel="noopener noreferrer">Compare parts on eBay</a>${guide.category === 'Electronics' ? '<a class="aside-link" href="https://www.ifixit.com/Parts" target="_blank" rel="noopener noreferrer">Browse iFixit parts</a>' : ''}<p class="parts-note">These are search links, not exact-match listings. Check your model, measurements, and seller before ordering.</p></div><div class="guide-aside-panel source-panel"><div class="aside-caption">THE DEEPER GUIDE</div><h2>Expert source</h2><p class="parts-note">Our overview helps you start. The linked original has detailed photos and model-specific notes.</p><a class="aside-link" href="${escapeHtml(guide.source.url)}" target="_blank" rel="noopener noreferrer">Open ${escapeHtml(guide.source.label)}</a></div></aside></div></div>`
+  return `<div class="guide-shell"><nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#home">Home</a><span aria-hidden="true">/</span><a href="#guides">Guides</a><span aria-hidden="true">/</span><span aria-current="page">${escapeHtml(guide.category)}</span></nav><div class="guide-hero"><div class="guide-hero-copy"><span class="section-kicker">${escapeHtml(guide.category)} / ${escapeHtml(guide.action)}</span><h1 class="guide-title" id="guide-title" tabindex="-1">${escapeHtml(guide.title)}</h1><p>${escapeHtml(guide.summary)}</p><div class="guide-meta"><span>◷ ${guide.minutes} minutes</span>${difficultyMarkup(guide.difficulty)}<span>${guide.steps.length} steps</span></div><div class="guide-hero-actions"><button class="button button-primary" type="button" data-start-guide>Start guide</button><button class="button button-secondary" type="button" data-save="${guide.id}" aria-pressed="${saved.has(guide.id)}">${saved.has(guide.id) ? '♥ Saved' : '♡ Save guide'}</button><button class="button button-secondary" type="button" data-share>Copy link</button></div></div><div class="guide-hero-art art-${guide.category}" role="img" aria-label="Illustration of ${escapeHtml(guide.title.toLowerCase())}">${art(guide)}</div></div><div class="guide-main"><div class="guide-content"><section class="guide-panel" aria-labelledby="before-heading"><h2 id="before-heading">Before you begin</h2><p>${escapeHtml(guide.intro)}</p></section><section class="guide-panel guide-warning" aria-labelledby="safety-heading"><strong id="safety-heading">Safety first</strong><p>${escapeHtml(guide.safety)}</p></section>${videoContent}<section class="steps-panel" id="steps" aria-labelledby="steps-heading"><h2 id="steps-heading">Follow the path</h2><div class="progress-track" role="progressbar" aria-label="Guide progress" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-label" id="progress-label">${checked.size} of ${guide.steps.length} steps complete</div><ol class="step-list">${guide.steps.map(([title, text], index) => `<li class="step-item ${checked.has(index) ? 'done' : ''}"><input class="step-check" type="checkbox" data-step="${index}" data-guide-id="${guide.id}" aria-label="Mark step ${index + 1}, ${escapeHtml(title)}, complete" ${checked.has(index) ? 'checked' : ''}><div><div class="step-number">STEP ${String(index + 1).padStart(2, '0')}</div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p></div></li>`).join('')}</ol></section><div class="guide-bottom"><a class="button button-secondary" href="${escapeHtml(guide.source.url)}" target="_blank" rel="noopener noreferrer">Read the full ${escapeHtml(guide.source.label)}</a><button class="button button-secondary" type="button" data-print>Print guide</button></div></div><aside class="guide-aside" aria-label="Tools, parts, and source"><div class="guide-aside-panel"><div class="aside-caption">GET READY</div><h2>What you'll need</h2><ul class="supply-list">${guide.tools.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div class="guide-aside-panel"><div class="aside-caption">FIND THE FIT</div><h2>Parts & materials</h2><ul class="supply-list">${guide.parts.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul><a class="aside-link" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(guide.partsQuery)}" target="_blank" rel="noopener noreferrer">Compare parts on eBay</a>${guide.category === 'Electronics' ? '<a class="aside-link" href="https://www.ifixit.com/Parts" target="_blank" rel="noopener noreferrer">Browse iFixit parts</a>' : ''}<p class="parts-note">These are search links, not exact-match listings. Check your model, measurements, and seller before ordering.</p></div><div class="guide-aside-panel source-panel"><div class="aside-caption">THE DEEPER GUIDE</div><h2>Expert source</h2><p class="parts-note">Our overview helps you start. The linked original has detailed photos and model-specific notes.</p><a class="aside-link" href="${escapeHtml(guide.source.url)}" target="_blank" rel="noopener noreferrer">Open ${escapeHtml(guide.source.label)}</a></div></aside></div></div>`
 }
 
 function renderGuide(guide) {
@@ -158,9 +162,9 @@ function route() {
     $('#guide-view').hidden = true
     personalGuides.open(hash)
     window.scrollTo({ top: 0, behavior: 'instant' })
-    $('#my-guides-title').focus({ preventScroll: true })
     return
   }
+  personalGuides.close()
   if (hash === 'ai') {
     $('#home-view').hidden = true
     $('#guide-view').hidden = true
@@ -222,7 +226,12 @@ document.addEventListener('change', event => {
     preferences[key] = target.type === 'checkbox' ? target.checked : target.value
     savePreferences()
   }
-  if (target.dataset.filter) { state[target.dataset.filter] = target.value; state.savedOnly = false; renderCatalog() }
+  if (target.dataset.filter) {
+    const filter = target.dataset.filter
+    state[filter] = filter === 'level' && target.value !== 'All' ? Number(target.value) : target.value
+    state.savedOnly = false
+    renderCatalog()
+  }
   if (target.id === 'video-filter') { state.videoOnly = target.checked; state.savedOnly = false; renderCatalog() }
   if (target.id === 'sort-select') { state.sort = target.value; renderCatalog() }
   if (target.dataset.step !== undefined) {

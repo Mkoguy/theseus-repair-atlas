@@ -4,7 +4,7 @@
 export const guides = [
   {
     id: 'bicycle-flat', title: 'Patch a bicycle inner tube', category: 'Bikes', action: 'Patch',
-    difficulty: 'Beginner', minutes: 30, art: 'wheel', featured: true,
+    difficulty: 1, minutes: 30, art: 'wheel', featured: true,
     summary: 'Find the puncture, patch the tube, and get rolling again.',
     intro: 'For a standard bicycle tire with an inner tube. Tubeless setups need a different repair.',
     safety: 'Check the tire for glass or thorns before putting the tube back. Replace a torn tire rather than relying on a temporary boot for regular riding.',
@@ -23,7 +23,7 @@ export const guides = [
   },
   {
     id: 'leaky-faucet', title: 'Stop a dripping faucet', category: 'Home', action: 'Repair',
-    difficulty: 'Beginner', minutes: 45, art: 'faucet', featured: true,
+    difficulty: 1, minutes: 45, art: 'faucet', featured: true,
     summary: 'A calm way to diagnose the drip and replace the worn part.',
     intro: 'Faucet designs vary. Identify the make and model before buying a cartridge, washer, or O-ring.',
     safety: 'Turn off the water supply and open the faucet to release pressure. If a shutoff valve will not close, stop and get help before disassembly.',
@@ -42,7 +42,7 @@ export const guides = [
   },
   {
     id: 'drywall-hole', title: 'Patch a small drywall hole', category: 'Home', action: 'Patch',
-    difficulty: 'Beginner', minutes: 60, art: 'wall', featured: true,
+    difficulty: 1, minutes: 60, art: 'wall', featured: true,
     summary: 'Turn a dent or small hole into a smooth, paint-ready wall.',
     intro: 'This covers small non-structural holes. Large openings, moisture damage, or electrical hazards need a different approach.',
     safety: 'Check for wiring and plumbing before cutting or driving anything into a wall. Wear eye protection while sanding.',
@@ -61,7 +61,7 @@ export const guides = [
   },
   {
     id: 'zipper-slider', title: 'Replace a jacket zipper slider', category: 'Clothing', action: 'Replace',
-    difficulty: 'Intermediate', minutes: 30, art: 'zipper', featured: false,
+    difficulty: 3, minutes: 30, art: 'zipper', featured: false,
     summary: 'Keep the jacket. Swap the small part that makes the zip work.',
     intro: 'Start by identifying the zipper type and size. This is for a slider problem, not torn zipper tape or missing teeth.',
     safety: 'Use scissors and pliers carefully. If the zipper is sewn into delicate or waterproof fabric, consider a professional repair.',
@@ -80,7 +80,7 @@ export const guides = [
   },
   {
     id: 'sew-button', title: 'Sew a button back on', category: 'Clothing', action: 'Repair',
-    difficulty: 'Beginner', minutes: 15, art: 'button', featured: false,
+    difficulty: 1, minutes: 15, art: 'button', featured: false,
     summary: 'A tiny repair that can rescue a favorite shirt or coat.',
     intro: 'A basic hand-sewn four-hole button. Heavy coats may need a raised thread shank instead.',
     safety: 'Keep needles and spare buttons away from young children. Use a thimble if you need extra finger protection.',
@@ -98,7 +98,7 @@ export const guides = [
   },
   {
     id: 'laptop-battery', title: 'Plan a laptop battery replacement', category: 'Electronics', action: 'Replace',
-    difficulty: 'Intermediate', minutes: 60, art: 'laptop', featured: false,
+    difficulty: 3, minutes: 60, art: 'laptop', featured: false,
     summary: 'Find the exact battery and guide before opening a laptop.',
     intro: 'Laptop batteries and opening steps are model-specific. Use this checklist to prepare, then follow the guide for your exact model.',
     safety: 'A swollen, punctured, hot, or damaged lithium battery needs special handling. Stop and contact a qualified repair service. Never bend or puncture a battery.',
@@ -117,7 +117,7 @@ export const guides = [
   },
   {
     id: 'window-screen', title: 'Repair a torn window screen', category: 'Home', action: 'Patch',
-    difficulty: 'Beginner', minutes: 35, art: 'screen', featured: false,
+    difficulty: 1, minutes: 35, art: 'screen', featured: false,
     summary: 'Keep bugs out without replacing the entire window.',
     intro: 'A small tear can be patched; a badly damaged screen may need new mesh and spline.',
     safety: 'Remove the screen carefully and avoid leaning out of a window. Wear gloves around sharp frame edges.',
@@ -135,7 +135,7 @@ export const guides = [
   },
   {
     id: 'phone-screen', title: 'Prepare for a phone screen repair', category: 'Electronics', action: 'Replace',
-    difficulty: 'Advanced', minutes: 90, art: 'phone', featured: false,
+    difficulty: 5, minutes: 90, art: 'phone', featured: false,
     summary: 'Check the exact model, part, and risks before touching adhesive.',
     intro: 'Phone screen replacement is highly model-specific. The linked video is an iPhone 15 Pro example, not a universal procedure.',
     safety: 'A cracked screen can shed glass and the battery can be damaged by the wrong tool. If the battery is swollen or you cannot find an exact-model guide, use a qualified repair service.',

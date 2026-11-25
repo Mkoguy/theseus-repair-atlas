@@ -1,6 +1,6 @@
 # Theseus
 
-Theseus is a free, public repair atlas. Visitors can browse repair guides, track steps, and write their own guides without creating an account. My Guides is stored in the browser and supports search, category filters, editing, and deletion.
+Theseus is a free, public repair atlas. Visitors can browse repair guides, track steps, and write their own guides without creating an account. My Guides supports photos, parts lists, and a five-star difficulty scale. Its search, categories, and editor use the guides saved in the browser.
 
 ## Open in WebStorm
 
