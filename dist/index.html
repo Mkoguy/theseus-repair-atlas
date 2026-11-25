@@ -11,11 +11,11 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./styles.css">
     <link rel="stylesheet" href="./refinements.css">
+    <link rel="stylesheet" href="./workspace.css">
     <script type="module" src="./app.js"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to main content</a>
-    <div class="announcement"><span class="announcement-star" aria-hidden="true">✳</span> The free repair atlas for things worth keeping <span class="announcement-star" aria-hidden="true">✳</span></div>
 
     <header class="site-header">
       <div class="header-inner shell">
@@ -32,40 +32,28 @@
         <nav class="header-actions" aria-label="Main navigation">
           <a href="#browse">Find a fix</a>
           <a href="#guides">Guides</a>
+          <a href="#my-guides">My Guides</a>
           <a href="#ai">AI guide maker</a>
-          <button id="saved-nav" class="saved-nav" type="button" aria-pressed="false"><span aria-hidden="true">♡</span> Saved <span id="saved-count" class="saved-count" hidden>0</span></button>
-          <a class="settings-nav" href="#settings"><span aria-hidden="true">⚙</span> Accessibility</a>
-          <button id="text-toggle" class="text-toggle" type="button" aria-pressed="false" title="Toggle larger text">A<span>+</span><span class="sr-only"> Toggle larger text</span></button>
+          <a id="saved-nav" class="saved-nav" href="#saved"><span aria-hidden="true">♡</span> Saved <span id="saved-count" class="saved-count" hidden>0</span></a>
+          <a class="settings-nav" href="#settings">Settings</a>
         </nav>
       </div>
-      <nav class="market-nav" aria-label="Repair categories"><div class="shell market-nav-inner"><a href="#home">Home</a><a href="#browse">Find a fix</a><a href="#guides">All guides</a><a href="#ai">AI guide maker</a><button type="button" data-category="Electronics">Electronics</button><button type="button" data-category="Home">Home</button><button type="button" data-category="Clothing">Clothing</button><button type="button" data-category="Bikes">Bikes</button><span class="market-nav-spacer"></span><a href="#settings">Accessibility</a></div></nav>
     </header>
 
-    <main id="main">
+    <div class="site-layout">
+      <div class="ad-slot" aria-hidden="true"><img src="./assets/blank-banner.png" width="160" height="600" alt=""></div>
+    <main id="main" tabindex="-1">
       <div id="home-view">
         <section class="hero shell" aria-labelledby="hero-title">
           <div class="hero-copy">
             <span class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> The repair atlas</span>
             <h1 id="hero-title">Keep the story.<br><em>Fix the thing.</em></h1>
             <p>From screens to seams, find a clear path from “it’s broken” to “I fixed it.” Free guides, real videos, and a smarter way to find the right parts.</p>
-            <form id="hero-search" class="hero-search" role="search">
-              <label class="sr-only" for="hero-query">Search all repair guides</label>
-              <input id="hero-query" type="search" placeholder="Try “flat tire” or “zipper”" autocomplete="off">
-              <button type="submit">Find a fix</button>
-            </form>
             <div class="hero-suggestions" aria-label="Popular repair searches"><span>Try a repair</span><button type="button" data-quick-search="bicycle">Flat tire</button><button type="button" data-quick-search="faucet">Dripping faucet</button><button type="button" data-quick-search="zipper">Broken zipper</button></div>
             <div class="hero-proof"><span class="proof-dot" aria-hidden="true"></span> No account. No paywall. Just a place to start.</div>
           </div>
           <div class="hero-art" role="img" aria-label="A patched jacket, bicycle tire, laptop, faucet, and repaired cup beside a small ship"></div>
           <div class="hero-corner" aria-hidden="true">REPAIR IS A WAY FORWARD <span>✳</span></div>
-        </section>
-
-        <div class="access-invite shell"><div class="access-invite-mark" aria-hidden="true">Aa</div><div><strong>Make the atlas work for you.</strong><span>Change text size, contrast, colors, motion, and more at any time.</span></div><a href="#settings">Open accessibility settings</a></div>
-
-        <section class="category-section shell" aria-labelledby="category-title">
-          <div class="section-kicker">START SOMEWHERE</div>
-          <div class="section-head"><h2 id="category-title">What are you fixing?</h2><p>Pick a world. Find your way in.</p></div>
-          <div class="category-grid" id="category-grid"></div>
         </section>
 
         <section class="catalog-section" id="catalog" aria-labelledby="catalog-title">
@@ -82,11 +70,12 @@
               </aside>
               <div class="browse-summary"><div><span class="browse-summary-kicker">YOUR REPAIR ROUTE</span><h2 id="browse-summary-title">8 guides ready to explore</h2><p>Use the filters to find a good starting point. You can change them whenever you want.</p></div><a id="show-guides" class="button button-primary" href="#guides">View matching guides</a></div>
               <div class="catalog-main">
-                <a class="refine-link" href="#browse">Change search and filters</a>
+                <div class="guide-categories" role="group" aria-label="Guide categories" id="guide-categories"></div>
                 <div class="result-toolbar"><div><strong id="result-title">All guides</strong><span id="result-count" role="status" aria-live="polite"></span></div><label for="sort-select">Sort by <select id="sort-select"><option value="featured">Featured</option><option value="quickest">Quickest first</option><option value="az">A to Z</option></select></label></div>
                 <div class="active-filters" id="active-filters" aria-live="polite"></div>
                 <div class="guide-grid" id="guide-grid"></div>
-                <div class="wider-search"><div><strong>Still looking for your exact fix?</strong><p>Search a wider repair library for a specific model or object.</p></div><a id="wider-search-link" href="https://www.ifixit.com/" target="_blank" rel="noopener noreferrer">Search more repair guides</a></div>
+                <div class="empty-state" id="empty-saved" hidden><h3>No saved guides yet</h3><p>Select the heart on a guide to find it here later.</p></div>
+                <div class="wider-search" id="wider-search"><div><strong>Still looking for your exact fix?</strong><p>Search a wider repair library for a specific model or object.</p></div><a id="wider-search-link" href="https://www.ifixit.com/" target="_blank" rel="noopener noreferrer">Search more repair guides</a></div>
                 <div class="empty-state" id="empty-state" hidden><div class="empty-symbol" aria-hidden="true">⌁</div><h3>No exact match yet.</h3><p>We’re growing the atlas. Add the exact item and fault to make an AI starting guide.</p><div class="empty-actions"><a id="generate-guide" class="button button-primary" href="#ai">Create an AI starting guide</a><a id="external-search" class="button button-secondary" href="https://www.ifixit.com/" target="_blank" rel="noopener noreferrer">Search iFixit</a><button id="empty-reset" class="button button-secondary" type="button">See all guides</button></div></div>
               </div>
             </div>
@@ -113,12 +102,20 @@
         </div>
       </section>
 
+      <section id="my-guides-view" class="my-guides-view" hidden aria-labelledby="my-guides-title">
+        <div class="shell" id="my-guides-content"></div>
+      </section>
+
       <section id="settings-view" class="settings-view" hidden aria-labelledby="settings-title">
         <div class="shell settings-shell">
           <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#home">Home</a><span aria-hidden="true">/</span><span aria-current="page">Accessibility settings</span></nav>
-          <div class="settings-intro"><span class="section-kicker">YOUR ATLAS, YOUR WAY</span><h1 id="settings-title" tabindex="-1">A clearer way to repair.</h1><p>Choose what makes the site easier to read and use. Changes appear immediately and stay on this browser.</p></div>
+          <div class="settings-intro"><h1 id="settings-title" tabindex="-1">Settings</h1><p>Choose what makes the site easier to read and use. Your preferences stay in this browser.</p></div>
           <div class="settings-layout">
             <div class="settings-controls">
+              <section class="settings-panel" aria-labelledby="appearance-title">
+                <div class="settings-panel-heading"><span class="settings-icon" aria-hidden="true">◐</span><div><h2 id="appearance-title">Appearance</h2></div></div>
+                <label class="setting-row setting-toggle"><span><strong>Dark mode</strong><span>Use a dark background across the site.</span></span><input type="checkbox" data-setting="darkMode" role="switch"></label>
+              </section>
               <section class="settings-panel" aria-labelledby="presets-title"><div class="settings-panel-heading"><span class="settings-icon" aria-hidden="true">✦</span><div><h2 id="presets-title">Start with a preset</h2><p>You can still change every option below.</p></div></div><div class="preset-grid"><button type="button" data-preset="default"><strong>Original</strong><span>The full Theseus look</span></button><button type="button" data-preset="low-vision"><strong>Easier to see</strong><span>Larger text and stronger contrast</span></button><button type="button" data-preset="calm"><strong>Calm focus</strong><span>More space and less movement</span></button></div></section>
               <section class="settings-panel" aria-labelledby="vision-title"><div class="settings-panel-heading"><span class="settings-icon" aria-hidden="true">◉</span><div><h2 id="vision-title">Sight and color</h2><p>The meaning of buttons and labels never depends on color alone.</p></div></div><div class="setting-row"><label for="setting-text-size"><strong>Text size</strong><span>Enlarge words and controls without browser setup.</span></label><select id="setting-text-size" data-setting="textSize"><option value="100">Standard · 100%</option><option value="125">Larger · 125%</option><option value="150">Extra large · 150%</option><option value="200">Maximum · 200%</option></select></div><label class="setting-row setting-toggle"><span><strong>High contrast</strong><span>Make text, borders, and buttons stand out more.</span></span><input type="checkbox" data-setting="highContrast" role="switch"></label><fieldset class="palette-field"><legend>Color palette</legend><p>Try alternate colors if some hues are hard to tell apart.</p><div class="palette-grid"><label><input type="radio" name="palette" value="original" data-setting="palette"><span class="palette-swatch swatch-original" aria-hidden="true"></span><strong>Original</strong><small>Aegean teal and clay</small></label><label><input type="radio" name="palette" value="blue-amber" data-setting="palette"><span class="palette-swatch swatch-blue-amber" aria-hidden="true"></span><strong>Blue &amp; amber</strong><small>For red–green confusion</small></label><label><input type="radio" name="palette" value="coral-charcoal" data-setting="palette"><span class="palette-swatch swatch-coral-charcoal" aria-hidden="true"></span><strong>Coral &amp; charcoal</strong><small>For blue–yellow confusion</small></label><label><input type="radio" name="palette" value="monochrome" data-setting="palette"><span class="palette-swatch swatch-monochrome" aria-hidden="true"></span><strong>Monochrome</strong><small>Shape and words first</small></label></div></fieldset></section>
               <section class="settings-panel" aria-labelledby="comfort-title"><div class="settings-panel-heading"><span class="settings-icon" aria-hidden="true">≋</span><div><h2 id="comfort-title">Reading and focus</h2><p>Give instructions more room to breathe.</p></div></div><label class="setting-row setting-toggle"><span><strong>Spacious reading</strong><span>Use wider line spacing and a simple sans-serif font.</span></span><input type="checkbox" data-setting="spaciousReading" role="switch"></label><label class="setting-row setting-toggle"><span><strong>Calm layout</strong><span>Reduce decorative patterns and keep guide text prominent.</span></span><input type="checkbox" data-setting="calmLayout" role="switch"></label></section>
@@ -132,7 +129,9 @@
 
       <section id="guide-view" class="guide-view" hidden aria-live="off"></section>
     </main>
+      <div class="ad-slot" aria-hidden="true"><img src="./assets/blank-banner.png" width="160" height="600" alt=""></div>
+    </div>
 
-    <footer class="site-footer"><div class="shell footer-inner"><div><a class="brand footer-brand" href="#home" aria-label="Theseus home"><span>theseus<span class="brand-period">.</span></span></a><p>Keep what matters in motion.</p></div><div class="footer-links"><a href="#browse">Find a fix</a><a href="#guides">Guides</a><a href="#ai">AI guide maker</a><a href="#method">How it works</a><a href="#settings">Accessibility settings</a><a href="https://www.ifixit.com/" target="_blank" rel="noopener noreferrer">More repairs at iFixit</a></div><div class="footer-note">A free student project. Parts links open external stores; check compatibility before buying. Videos and expert guides belong to their creators.</div></div></footer>
+    <footer class="site-footer"><div class="shell footer-inner"><div><span class="brand footer-brand">theseus<span class="brand-period">.</span></span><p>Keep what matters in motion.</p></div><div class="footer-links"><a href="#method">How it works</a></div><div class="footer-note">Parts links open external stores. Check compatibility before buying. Videos and expert guides belong to their creators.</div></div></footer>
   </body>
 </html>

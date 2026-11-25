@@ -1,5 +1,6 @@
 import { guides, categories } from './guides.js'
 import { initAiGuide } from './ai.js'
+import { createPersonalGuides } from './my-guides.js'
 
 const $ = selector => document.querySelector(selector)
 const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])
@@ -10,7 +11,7 @@ const actions = ['All', 'Repair', 'Replace', 'Patch']
 const levels = ['All', 'Beginner', 'Intermediate', 'Advanced']
 const guideById = new Map(guides.map(guide => [guide.id, guide]))
 const preferenceDefaults = {
-  textSize: '100', palette: 'original', highContrast: false,
+  textSize: '100', palette: 'original', highContrast: false, darkMode: false,
   spaciousReading: false, calmLayout: false, reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
   largeControls: false
 }
@@ -31,14 +32,13 @@ function applyPreferences(message = '') {
   const root = document.documentElement
   root.dataset.textSize = preferences.textSize
   root.dataset.palette = preferences.palette
-  for (const key of ['highContrast', 'spaciousReading', 'calmLayout', 'reduceMotion', 'largeControls']) root.dataset[key] = String(preferences[key])
+  for (const key of ['darkMode', 'highContrast', 'spaciousReading', 'calmLayout', 'reduceMotion', 'largeControls']) root.dataset[key] = String(preferences[key])
   document.querySelectorAll('[data-setting]').forEach(control => {
     const value = preferences[control.dataset.setting]
     if (control.type === 'checkbox') control.checked = value
     else if (control.type === 'radio') control.checked = control.value === value
     else control.value = value
   })
-  $('#text-toggle').setAttribute('aria-pressed', String(preferences.textSize !== '100'))
   if (message) $('#settings-status').textContent = message
 }
 
@@ -65,14 +65,9 @@ const progressKey = id => `theseus:progress:${id}`
 const getProgress = id => new Set(readJson(progressKey(id), []))
 const persistProgress = (id, set) => localStorage.setItem(progressKey(id), JSON.stringify([...set]))
 
-function renderCategories() {
-  const symbols = { Electronics: '⌁', Home: '⌂', Clothing: '✳', Bikes: '◉' }
-  const descriptions = { Electronics: 'Screens and devices', Home: 'Everyday spaces', Clothing: 'Seams and fasteners', Bikes: 'Keep rolling' }
-  $('#category-grid').innerHTML = categories.filter(name => name !== 'All').map((name, index) => {
-    const count = guides.filter(guide => guide.category === name).length
-    return `<button class="category-tile" type="button" data-category="${name}"><span class="category-number">0${index + 1} / REPAIR WORLD</span><span class="tile-mark" aria-hidden="true">${symbols[name]}</span><span class="category-name">${name}</span><span class="category-description">${descriptions[name]}</span><span class="category-count">Explore ${count} ${count === 1 ? 'guide' : 'guides'}</span></button>`
-  }).join('')
-}
+const personalGuides = createPersonalGuides({
+  content: $('#my-guides-content'), categories: categories.filter(name => name !== 'All'), escapeHtml
+})
 
 function renderFilters() {
   const create = (values, field, count) => values.map(value => `<label class="filter-check"><input type="radio" name="${field}" value="${value}" data-filter="${field}" ${state[field] === value ? 'checked' : ''}><span>${value === 'All' ? 'All' : value}</span>${count && value !== 'All' ? `<small>${guides.filter(guide => guide.category === value).length}</small>` : ''}</label>`).join('')
@@ -109,14 +104,16 @@ function renderCatalog() {
   const results = filteredGuides()
   $('#guide-grid').innerHTML = results.map(card).join('')
   $('#guide-grid').hidden = results.length === 0
-  $('#empty-state').hidden = results.length !== 0
+  $('#empty-state').hidden = results.length !== 0 || state.savedOnly
+  $('#empty-saved').hidden = results.length !== 0 || !state.savedOnly
+  $('#wider-search').hidden = results.length === 0 || state.savedOnly
+  $('#guide-categories').hidden = state.savedOnly
   $('#result-title').textContent = state.savedOnly ? 'Saved guides' : state.query ? `Results for “${state.query}”` : state.category !== 'All' ? state.category : 'All guides'
   $('#result-count').textContent = `${results.length} ${results.length === 1 ? 'guide' : 'guides'}`
   $('#browse-summary-title').textContent = `${results.length} ${results.length === 1 ? 'guide' : 'guides'} ${state.query || state.category !== 'All' || state.action !== 'All' || state.level !== 'All' ? 'found' : 'ready to explore'}`
   $('#saved-count').textContent = String(saved.size)
   $('#saved-count').hidden = saved.size === 0
-  $('#saved-nav').setAttribute('aria-pressed', String(state.savedOnly))
-  document.querySelectorAll('.market-nav [data-category]').forEach(button => button.setAttribute('aria-pressed', String(state.category === button.dataset.category && !state.savedOnly)))
+  document.querySelectorAll('#guide-categories [data-category]').forEach(button => button.setAttribute('aria-pressed', String(state.category === button.dataset.category)))
   $('#active-filters').innerHTML = [state.category !== 'All' && state.category, state.action !== 'All' && state.action, state.level !== 'All' && state.level, state.videoOnly && 'Video only', state.savedOnly && 'Saved'].filter(Boolean).map(label => `<span class="filter-chip">${escapeHtml(label)}</span>`).join('')
   const searchUrl = state.query ? `https://www.ifixit.com/Search?query=${encodeURIComponent(state.query)}` : 'https://www.ifixit.com/'
   $('#external-search').href = searchUrl
@@ -140,15 +137,30 @@ function route() {
   let hash
   try { hash = decodeURIComponent(location.hash.slice(1)) } catch { hash = '' }
   const guide = hash.startsWith('guide/') ? guideById.get(hash.slice(6)) : null
-  const view = hash === 'settings' ? 'settings' : hash === 'ai' ? 'ai' : guide ? 'guide' : hash === 'browse' || hash === 'catalog' ? 'browse' : hash === 'guides' || hash === 'saved' ? 'guides' : 'home'
+  const myGuides = hash === 'my-guides' || hash.startsWith('my-guides/')
+  const view = myGuides ? 'my-guides' : hash === 'settings' ? 'settings' : hash === 'ai' ? 'ai' : guide ? 'guide' : hash === 'browse' || hash === 'catalog' ? 'browse' : hash === 'guides' || hash === 'saved' ? 'guides' : 'home'
+  if ((hash === 'saved') !== state.savedOnly) {
+    clearFilters()
+    state.savedOnly = hash === 'saved'
+    renderCatalog()
+  }
   document.body.dataset.view = view
   $('#settings-view').hidden = hash !== 'settings'
   $('#ai-view').hidden = hash !== 'ai'
-  document.querySelectorAll('.header-actions a,.market-nav a').forEach(link => {
-    const active = link.getAttribute('href') === `#${view}`
+  $('#my-guides-view').hidden = !myGuides
+  document.querySelectorAll('.header-actions a').forEach(link => {
+    const active = link.getAttribute('href') === `#${hash === 'saved' ? 'saved' : view === 'guide' ? 'guides' : view}`
     if (active) link.setAttribute('aria-current', 'page')
     else link.removeAttribute('aria-current')
   })
+  if (myGuides) {
+    $('#home-view').hidden = true
+    $('#guide-view').hidden = true
+    personalGuides.open(hash)
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    $('#my-guides-title').focus({ preventScroll: true })
+    return
+  }
   if (hash === 'ai') {
     $('#home-view').hidden = true
     $('#guide-view').hidden = true
@@ -175,7 +187,6 @@ function route() {
     $('#guide-view').hidden = true
     $('#home-view').hidden = false
     document.title = 'Theseus — keep the story, fix the thing'
-    if (hash === 'saved') { state.savedOnly = true; renderCatalog() }
     if (view === 'browse' || view === 'guides') window.scrollTo({ top: 0, behavior: 'instant' })
     else if (hash === 'method') requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView())
     else if (hash === 'home' || !hash) window.scrollTo({ top: 0, behavior: 'instant' })
@@ -183,10 +194,8 @@ function route() {
 }
 
 function search(value) {
-  state.query = value.trim()
-  state.savedOnly = false
+  Object.assign(state, { query: value.trim(), savedOnly: false })
   $('#header-query').value = state.query
-  $('#hero-query').value = state.query
   $('#browse-query').value = state.query
   renderCatalog()
   if (location.hash !== '#browse') location.hash = 'browse'
@@ -196,13 +205,12 @@ function search(value) {
 function clearFilters() {
   Object.assign(state, { query: '', category: 'All', action: 'All', level: 'All', videoOnly: false, savedOnly: false, sort: 'featured' })
   $('#header-query').value = ''
-  $('#hero-query').value = ''
   $('#browse-query').value = ''
   renderCatalog()
 }
 
 document.addEventListener('submit', event => {
-  if (!['header-search', 'hero-search', 'browse-search'].includes(event.target.id)) return
+  if (!['header-search', 'browse-search'].includes(event.target.id)) return
   event.preventDefault()
   search(event.target.querySelector('input[type="search"]').value)
 })
@@ -236,7 +244,9 @@ document.addEventListener('click', async event => {
   if (!target) return
   if (target.dataset.quickSearch) search(target.dataset.quickSearch)
   if (target.dataset.preset) {
+    const darkMode = preferences.darkMode
     Object.assign(preferences, preferenceDefaults)
+    preferences.darkMode = darkMode
     if (target.dataset.preset === 'low-vision') Object.assign(preferences, { textSize: '150', highContrast: true, largeControls: true })
     if (target.dataset.preset === 'calm') Object.assign(preferences, { spaciousReading: true, calmLayout: true, reduceMotion: true })
     savePreferences(`${target.querySelector('strong')?.textContent || 'Preset'} settings applied and saved.`)
@@ -244,25 +254,22 @@ document.addEventListener('click', async event => {
   if (target.id === 'reset-accessibility') { Object.assign(preferences, preferenceDefaults); savePreferences('Original settings restored.') }
   if (target.dataset.category) {
     Object.assign(state, { category: target.dataset.category, query: '', action: 'All', level: 'All', videoOnly: false, savedOnly: false })
-    $('#header-query').value = ''; $('#hero-query').value = ''; $('#browse-query').value = ''
+    $('#header-query').value = ''; $('#browse-query').value = ''
     renderCatalog(); location.hash = 'guides'; window.scrollTo({ top: 0, behavior: 'instant' })
   }
   if (target.dataset.save) {
     saved.has(target.dataset.save) ? saved.delete(target.dataset.save) : saved.add(target.dataset.save)
     persistSaved(); renderCatalog()
     const guide = guideById.get(target.dataset.save)
-    if (!$('#guide-view').hidden && guide) renderGuide(guide)
+    if (!$('#guide-view').hidden && guide) {
+      renderGuide(guide)
+      $('#guide-view [data-save]').focus({ preventScroll: true })
+    }
   }
-  if (target.id === 'saved-nav') {
-    state.savedOnly = !state.savedOnly
-    state.query = ''
-    $('#header-query').value = ''; $('#hero-query').value = ''; $('#browse-query').value = ''
-    renderCatalog(); location.hash = 'guides'; window.scrollTo({ top: 0, behavior: 'instant' })
-  }
-  if (target.id === 'clear-filters' || target.id === 'empty-reset') clearFilters()
-  if (target.id === 'text-toggle') {
-    preferences.textSize = preferences.textSize === '100' ? '125' : '100'
-    savePreferences(preferences.textSize === '100' ? 'Standard text size restored.' : 'Larger text is on.')
+  if (target.id === 'clear-filters') clearFilters()
+  if (target.id === 'empty-reset') {
+    clearFilters()
+    location.hash = 'guides'
   }
   if (target.dataset.startGuide !== undefined) $('#steps')?.scrollIntoView()
   if (target.dataset.print !== undefined) window.print()
@@ -280,11 +287,15 @@ document.addEventListener('click', async event => {
 
 document.addEventListener('keydown', event => {
   if (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
-    event.preventDefault(); $('#header-query').focus()
+    event.preventDefault()
+    const searchField = document.body.dataset.view === 'browse' ? '#browse-query' : document.body.dataset.view === 'my-guides' && $('#my-guide-search') ? '#my-guide-search' : '#header-query'
+    $(searchField).focus()
   }
 })
 
-renderCategories()
+$('#guide-categories').innerHTML = categories.map(name =>
+  `<button type="button" data-category="${escapeHtml(name)}">${name === 'All' ? 'All categories' : escapeHtml(name)}</button>`
+).join('')
 renderCatalog()
 applyPreferences()
 initAiGuide({ escapeHtml })

@@ -1,6 +1,6 @@
 # Theseus
 
-Theseus is a free, public repair atlas. Visitors can search and filter repair guides, watch linked expert videos, find parts, save guides, and track steps without creating an account. See the [live site](https://theseus-repair-atlas.yohguy.chatgpt.site).
+Theseus is a free, public repair atlas. Visitors can browse repair guides, track steps, and write their own guides without creating an account. My Guides is stored in the browser and supports search, category filters, editing, and deletion.
 
 ## Open in WebStorm
 
@@ -14,13 +14,15 @@ Theseus is a free, public repair atlas. Visitors can search and filter repair gu
 - `dist/styles.css` — the responsive visual system: Aegean blue, clay, cream, repair seams, and large type.
 - `dist/app.js` — search, filtering, saved guides, guide views, video playback, and local step progress.
 - `dist/guides.js` — the curated guide data. Add new repair paths here.
+- `dist/my-guides.js` — the personal guide library, reader, and editor.
+- `dist/workspace.css` — the personal guide screens, dark mode, and desktop banner slots.
 - `dist/assets/repair-still-life.png` — original hero artwork.
 
 ## Content and safety
 
 The eight starter guides are short original overviews, each linked to a detailed expert source. Electronics repairs are explicitly model-specific. Parts buttons open searches, not guaranteed compatible listings; visitors should check the exact model and seller. Videos are credited to their creators and embedded only after a visitor presses Play.
 
-Saved guides, step progress, and larger text preference live in the visitor's browser storage. There is no account or server-side collection of visitor data in this version. External video, source, font, and parts sites have their own policies.
+Saved guides, personal guides, step progress, and settings live in the visitor's browser storage. Personal guides stay on that browser and can be lost if its site data is cleared. Guide maker requests go to Gemini when the host has configured `GEMINI_API_KEY` as a server secret. External video, source, font, and parts sites have their own policies.
 
 ## Presentation constraint
 
