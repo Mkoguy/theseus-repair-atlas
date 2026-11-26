@@ -1,7 +1,8 @@
 import { guides, categories } from './guides.js?v=stars'
 import { initAiGuide } from './ai.js'
-import { createPersonalGuides } from './my-guides.js?v=photos'
+import { createPersonalGuides } from './my-guides.js?v=document-editor'
 import { difficultyMarkup } from './guide-difficulty.js'
+import { initPartsTools } from './parts-tools.js'
 
 const $ = selector => document.querySelector(selector)
 const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])
@@ -142,7 +143,8 @@ function route() {
   try { hash = decodeURIComponent(location.hash.slice(1)) } catch { hash = '' }
   const guide = hash.startsWith('guide/') ? guideById.get(hash.slice(6)) : null
   const myGuides = hash === 'my-guides' || hash.startsWith('my-guides/')
-  const view = myGuides ? 'my-guides' : hash === 'settings' ? 'settings' : hash === 'ai' ? 'ai' : guide ? 'guide' : hash === 'browse' || hash === 'catalog' ? 'browse' : hash === 'guides' || hash === 'saved' ? 'guides' : 'home'
+  const standalone = ['settings', 'ai', 'parts-tools'].includes(hash)
+  const view = myGuides ? 'my-guides' : standalone ? hash : guide ? 'guide' : hash === 'browse' || hash === 'catalog' ? 'browse' : hash === 'guides' || hash === 'saved' ? 'guides' : 'home'
   if ((hash === 'saved') !== state.savedOnly) {
     clearFilters()
     state.savedOnly = hash === 'saved'
@@ -151,6 +153,7 @@ function route() {
   document.body.dataset.view = view
   $('#settings-view').hidden = hash !== 'settings'
   $('#ai-view').hidden = hash !== 'ai'
+  $('#parts-tools-view').hidden = hash !== 'parts-tools'
   $('#my-guides-view').hidden = !myGuides
   document.querySelectorAll('.header-actions a').forEach(link => {
     const active = link.getAttribute('href') === `#${hash === 'saved' ? 'saved' : view === 'guide' ? 'guides' : view}`
@@ -165,6 +168,14 @@ function route() {
     return
   }
   personalGuides.close()
+  if (hash === 'parts-tools') {
+    $('#home-view').hidden = true
+    $('#guide-view').hidden = true
+    document.title = 'Parts & 3D — Theseus'
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    $('#parts-tools-title').focus({ preventScroll: true })
+    return
+  }
   if (hash === 'ai') {
     $('#home-view').hidden = true
     $('#guide-view').hidden = true
@@ -308,6 +319,7 @@ $('#guide-categories').innerHTML = categories.map(name =>
 renderCatalog()
 applyPreferences()
 initAiGuide({ escapeHtml })
+initPartsTools()
 window.addEventListener('hashchange', route)
 route()
 

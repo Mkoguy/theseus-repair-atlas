@@ -12,7 +12,8 @@
     <link rel="stylesheet" href="./styles.css">
     <link rel="stylesheet" href="./refinements.css">
     <link rel="stylesheet" href="./workspace.css?v=guide-photos">
-    <script type="module" src="./app.js?v=guide-photos"></script>
+    <link rel="stylesheet" href="./workbench.css">
+    <script type="module" src="./app.js?v=document-editor"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to main content</a>
@@ -33,6 +34,7 @@
           <a href="#browse">Find a fix</a>
           <a href="#guides">Guides</a>
           <a href="#my-guides">My Guides</a>
+          <a href="#parts-tools">Parts &amp; 3D</a>
           <a href="#ai">AI guide maker</a>
           <a id="saved-nav" class="saved-nav" href="#saved"><span aria-hidden="true">♡</span> Saved <span id="saved-count" class="saved-count" hidden>0</span></a>
           <a class="settings-nav" href="#settings">Settings</a>
@@ -104,6 +106,36 @@
 
       <section id="my-guides-view" class="my-guides-view" hidden aria-labelledby="my-guides-title">
         <div class="shell" id="my-guides-content"></div>
+      </section>
+
+      <section id="parts-tools-view" class="parts-tools-view" hidden aria-labelledby="parts-tools-title">
+        <div class="shell">
+          <div class="workbench-heading"><h1 id="parts-tools-title" tabindex="-1">Parts &amp; 3D</h1><p>Find a replacement part or inspect a model before you add it to a guide.</p></div>
+          <div class="parts-tools-layout">
+            <section class="personal-panel" aria-labelledby="mesh-heading">
+              <h2 id="mesh-heading">3D file preview</h2>
+              <div id="standalone-model-viewer"></div>
+            </section>
+            <section class="personal-panel manufacturer-panel" aria-labelledby="manufacturer-heading">
+              <p class="personal-meta">FEATURE PREVIEW</p>
+              <h2 id="manufacturer-heading">Spare Parts AI Agent</h2>
+              <p>The planned agent could contact manufacturers to check stock, exact part numbers, and whether they offer an approved 3D-printable replacement file.</p>
+              <p>Today you can draft your own request here, then review and send it to the manufacturer.</p>
+              <form id="parts-request-form" class="workbench-fields">
+                <label>Manufacturer<input name="manufacturer" required maxlength="120" placeholder="e.g. the maker of your lamp"></label>
+                <label>Product and model<input name="model" required maxlength="160" placeholder="Check the product label"></label>
+                <label>Part needed<input name="part" required maxlength="160" placeholder="Include the part number if you know it"></label>
+                <label class="parts-request-option"><input name="printable" type="checkbox" checked> Ask for a 3D-printable file if a spare is unavailable</label>
+                <div><button class="button button-primary" type="submit">Draft a parts request</button></div>
+              </form>
+              <div id="parts-request-draft" class="workbench-fields" hidden>
+                <label>Request draft<textarea id="parts-request-text" rows="8"></textarea></label>
+                <div><button class="button button-secondary" type="button" id="copy-parts-request">Copy draft</button></div>
+                <p class="personal-muted" id="parts-copy-status" role="status"></p>
+              </div>
+            </section>
+          </div>
+        </div>
       </section>
 
       <section id="settings-view" class="settings-view" hidden aria-labelledby="settings-title">

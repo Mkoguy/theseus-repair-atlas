@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Theseus Desktop and Mobile" type="NodeJSConfigurationType" path-to-js-file="scripts/preview.mjs" working-dir="$PROJECT_DIR$">
+    <method v="2" />
+  </configuration>
+</component>
+
