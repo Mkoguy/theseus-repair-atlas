@@ -24,10 +24,10 @@ function openInBrowser(url) {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://' + host + ':' + port)
-    if (url.pathname === '/api/guides') {
+    if (url.pathname === '/api/guides' || url.pathname.startsWith('/api/parts/')) {
       const body = req.method === 'POST' ? Readable.toWeb(req) : undefined
       const request = new Request(url, { method: req.method, body, duplex: 'half', headers: req.headers })
-      const response = await worker.fetch(request, process.env)
+      const response = await worker.fetch(request, { ...process.env, THESEUS_LOCAL_PREVIEW: true })
       res.writeHead(response.status, Object.fromEntries(response.headers))
       res.end(Buffer.from(await response.arrayBuffer()))
       return

@@ -12,8 +12,8 @@
     <link rel="stylesheet" href="./styles.css">
     <link rel="stylesheet" href="./refinements.css">
     <link rel="stylesheet" href="./workspace.css?v=guide-photos">
-    <link rel="stylesheet" href="./workbench.css">
-    <script type="module" src="./app.js?v=document-editor"></script>
+    <link rel="stylesheet" href="./workbench.css?v=parts-agent">
+    <script type="module" src="./app.js?v=parts-agent"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to main content</a>
@@ -34,7 +34,7 @@
           <a href="#browse">Find a fix</a>
           <a href="#guides">Guides</a>
           <a href="#my-guides">My Guides</a>
-          <a href="#parts-tools">Parts &amp; 3D</a>
+          <a class="parts-agent-nav" href="#parts-tools">Parts Agent</a>
           <a href="#ai">AI guide maker</a>
           <a id="saved-nav" class="saved-nav" href="#saved"><span aria-hidden="true">♡</span> Saved <span id="saved-count" class="saved-count" hidden>0</span></a>
           <a class="settings-nav" href="#settings">Settings</a>
@@ -52,7 +52,7 @@
             <h1 id="hero-title">Keep the story.<br><em>Fix the thing.</em></h1>
             <p>From screens to seams, find a clear path from “it’s broken” to “I fixed it.” Free guides, real videos, and a smarter way to find the right parts.</p>
             <div class="hero-suggestions" aria-label="Popular repair searches"><span>Try a repair</span><button type="button" data-quick-search="bicycle">Flat tire</button><button type="button" data-quick-search="faucet">Dripping faucet</button><button type="button" data-quick-search="zipper">Broken zipper</button></div>
-            <div class="hero-proof"><span class="proof-dot" aria-hidden="true"></span> No account. No paywall. Just a place to start.</div>
+            <a class="button hero-parts-cta" href="#parts-tools">Request a spare part or 3D file</a>
           </div>
           <div class="hero-art" role="img" aria-label="A patched jacket, bicycle tire, laptop, faucet, and repaired cup beside a small ship"></div>
           <div class="hero-corner" aria-hidden="true">REPAIR IS A WAY FORWARD <span>✳</span></div>
@@ -110,29 +110,61 @@
 
       <section id="parts-tools-view" class="parts-tools-view" hidden aria-labelledby="parts-tools-title">
         <div class="shell">
-          <div class="workbench-heading"><h1 id="parts-tools-title" tabindex="-1">Parts &amp; 3D</h1><p>Find a replacement part or inspect a model before you add it to a guide.</p></div>
-          <div class="parts-tools-layout">
+          <div class="workbench-heading parts-agent-heading">
+            <h1 id="parts-tools-title" tabindex="-1">Spare Parts Agent</h1>
+            <p>Ask a manufacturer for a replacement part, an approved 3D-printable file, or both.</p>
+          </div>
+          <div class="parts-tools-layout parts-outreach-layout">
+            <section class="personal-panel manufacturer-panel" aria-labelledby="manufacturer-heading">
+              <h2 id="manufacturer-heading">Contact a manufacturer</h2>
+              <p class="personal-muted" id="parts-delivery-status" role="status">Checking email options…</p>
+              <a id="parts-sign-in" class="button button-secondary" target="_top" hidden>Sign in for direct sending</a>
+              <form id="parts-request-form" class="workbench-fields">
+                <label>Manufacturer<select name="contact" required>
+                  <option value="">Choose a manufacturer</option>
+                  <option value="custom">Other manufacturer</option>
+                </select></label>
+                <div class="parts-request-details workbench-fields" id="parts-custom-contact" hidden>
+                  <label>Manufacturer name<input name="manufacturer" maxlength="120"></label>
+                  <label>Official support email<input name="email" type="email" maxlength="254" placeholder="Get this from the manufacturer’s website"></label>
+                </div>
+                <p class="personal-muted" id="parts-contact-summary" hidden></p>
+                <a id="parts-contact-source" class="aside-link" target="_blank" rel="noopener noreferrer" hidden>Verify contact on the manufacturer’s website</a>
+                <div class="personal-fields">
+                  <label>Product and model<input name="model" required maxlength="140" placeholder="Check the product label"></label>
+                  <label>Part needed<input name="part" required maxlength="160" placeholder="Part name or number"></label>
+                </div>
+                <label>Request type<select name="kind">
+                  <option value="either">Replacement part or printable file</option>
+                  <option value="part">Replacement part</option>
+                  <option value="file">3D-printable file</option>
+                </select></label>
+                <p class="personal-muted" id="parts-form-status" role="alert"></p>
+                <div><button class="button button-primary" type="submit">Review request</button></div>
+              </form>
+              <form id="parts-request-review" class="workbench-fields parts-request-review" aria-labelledby="parts-review-heading" hidden>
+                <h3 id="parts-review-heading" tabindex="-1">Review your message</h3>
+                <p id="parts-reviewed-recipient"></p>
+                <label>Subject<input id="parts-request-subject" maxlength="180" required></label>
+                <label>Message<textarea id="parts-request-text" rows="9" maxlength="2500" required></textarea></label>
+                <div id="parts-direct-controls" class="workbench-fields" hidden>
+                  <label class="parts-request-option"><input name="approved" type="checkbox"> I approve sending this message to the manufacturer.</label>
+                  <p class="personal-muted" id="parts-reply-to"></p>
+                  <div><button class="button button-primary" id="parts-send-request" type="submit" disabled>Send to manufacturer</button></div>
+                </div>
+                <div class="parts-contact-actions">
+                  <a id="parts-open-email" class="button button-secondary" hidden>Open email to send</a>
+                  <a id="parts-open-support" class="button button-secondary" target="_blank" rel="noopener noreferrer" hidden>Open official support</a>
+                  <button class="button button-secondary" type="button" id="copy-parts-request">Copy message</button>
+                </div>
+                <p class="personal-muted" id="parts-send-status" role="status"></p>
+                <p class="personal-muted" id="parts-copy-status" role="status"></p>
+              </form>
+            </section>
             <section class="personal-panel" aria-labelledby="mesh-heading">
               <h2 id="mesh-heading">3D file preview</h2>
+              <p class="personal-muted">Already received a file? Inspect it here.</p>
               <div id="standalone-model-viewer"></div>
-            </section>
-            <section class="personal-panel manufacturer-panel" aria-labelledby="manufacturer-heading">
-              <p class="personal-meta">FEATURE PREVIEW</p>
-              <h2 id="manufacturer-heading">Spare Parts AI Agent</h2>
-              <p>The planned agent could contact manufacturers to check stock, exact part numbers, and whether they offer an approved 3D-printable replacement file.</p>
-              <p>Today you can draft your own request here, then review and send it to the manufacturer.</p>
-              <form id="parts-request-form" class="workbench-fields">
-                <label>Manufacturer<input name="manufacturer" required maxlength="120" placeholder="e.g. the maker of your lamp"></label>
-                <label>Product and model<input name="model" required maxlength="160" placeholder="Check the product label"></label>
-                <label>Part needed<input name="part" required maxlength="160" placeholder="Include the part number if you know it"></label>
-                <label class="parts-request-option"><input name="printable" type="checkbox" checked> Ask for a 3D-printable file if a spare is unavailable</label>
-                <div><button class="button button-primary" type="submit">Draft a parts request</button></div>
-              </form>
-              <div id="parts-request-draft" class="workbench-fields" hidden>
-                <label>Request draft<textarea id="parts-request-text" rows="8"></textarea></label>
-                <div><button class="button button-secondary" type="button" id="copy-parts-request">Copy draft</button></div>
-                <p class="personal-muted" id="parts-copy-status" role="status"></p>
-              </div>
             </section>
           </div>
         </div>

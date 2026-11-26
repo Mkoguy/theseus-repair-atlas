@@ -29,7 +29,11 @@ The eight starter guides are short original overviews, each linked to a detailed
 
 Saved guides, personal guides, step progress, and settings live in the visitor's browser storage. Personal guides stay on that browser and can be lost if its site data is cleared. Guide maker requests go to Gemini when the host has configured `GEMINI_API_KEY` as a server secret. External video, source, font, and parts sites have their own policies.
 
-The 3D viewer opens STL and OBJ files locally. The spare-parts agent card describes planned manufacturer outreach. The current request tool prepares an editable draft for the visitor to review and send.
+The 3D viewer opens STL and OBJ files locally. The Spare Parts Agent shows verified manufacturer contact routes and prepares an editable request. Visitors can open an addressed message in their email app or copy it into an official support form.
+
+### Enable direct manufacturer email
+
+Set `RESEND_API_KEY` as a hosted secret, `PARTS_FROM_EMAIL` to an address on a verified sender domain, and `PARTS_SEND_USERS` to the comma-separated sign-in emails allowed to send from the site. Save and deploy with the updated environment. The API accepts reviewed messages only from those signed-in users and only for the manufacturer email addresses in its server-side directory. Replies go to the sender’s sign-in email. The local preview uses the email app and support links.
 
 ## Presentation constraint
 

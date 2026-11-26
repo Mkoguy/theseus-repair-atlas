@@ -5,6 +5,110 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }
 })
 
+const manufacturerContacts = [
+  { id: 'prusa', name: 'Prusa Research', email: 'info@prusa3d.com', source: 'https://help.prusa3d.com/article/customer-support_2287' },
+  { id: 'creality', name: 'Creality', email: 'cs@creality.com', source: 'https://www.creality.com/after-sales' },
+  { id: 'bambu', name: 'Bambu Lab', source: 'https://bambulab.com/en/support' },
+  { id: 'framework', name: 'Framework', source: 'https://knowledgebase.frame.work/contact/service-request-BkaHFvk1K' },
+  { id: 'ikea-us', name: 'IKEA (US)', source: 'https://www.ikea.com/us/en/customer-service/knowledge/articles/193eebfd-5239-495c-86d8-eggfffgg2305.html' }
+]
+const contactById = new Map(manufacturerContacts.map(contact => [contact.id, contact]))
+const recentPartsAttempts = new Map()
+const emailPattern = /^[a-z0-9.!#$&'*+\/=_~-]+@[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,63}$/i
+
+function resolvePartsDelivery(request, env) {
+  if (env.THESEUS_LOCAL_PREVIEW === true) return { mode: 'preview' }
+  const sender = bounded(env.PARTS_FROM_EMAIL, 254)
+  const operators = (env.PARTS_SEND_USERS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean)
+  if (!env.RESEND_API_KEY || !emailPattern.test(sender) || !operators.length) return { mode: 'setup' }
+  // The hosted Sites gateway supplies these request identity headers.
+  const userId = request.headers.get('oai-authenticated-user-id')
+  const userEmail = bounded(request.headers.get('oai-authenticated-user-email'), 254)
+  if (!userId || !emailPattern.test(userEmail)) return { mode: 'sign-in' }
+  if (!operators.includes(userEmail.toLowerCase())) return { mode: 'restricted' }
+  return { mode: 'ready', userId, userEmail, sender }
+}
+
+async function boundedJson(request, limit) {
+  if (!request.body) throw new Error('Missing input')
+  const reader = request.body.getReader()
+  const decoder = new TextDecoder()
+  let seen = 0
+  let text = ''
+  try {
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      seen += value.byteLength
+      if (seen > limit) {
+        await reader.cancel()
+        throw new Error('Input too large')
+      }
+      text += decoder.decode(value, { stream: true })
+    }
+    return JSON.parse(text + decoder.decode())
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+async function sendPartsRequest(request, env, delivery) {
+  if (delivery.mode !== 'ready') {
+    const status = delivery.mode === 'sign-in' ? 401 : delivery.mode === 'restricted' ? 403 : 503
+    return json({ message: 'Direct sending is unavailable for this session. Use the manufacturer’s contact route shown in the review.' }, status)
+  }
+  if (request.headers.get('origin') !== new URL(request.url).origin) {
+    return json({ message: 'Start the request from the Theseus website.' }, 403)
+  }
+  if (request.headers.get('content-type')?.split(';')[0] !== 'application/json') {
+    return json({ message: 'Use the request form to send your message.' }, 415)
+  }
+  let details
+  try { details = await boundedJson(request, 12_000) } catch {
+    return json({ message: 'The request could not be read. Shorten the message and try again.' }, 400)
+  }
+  const contact = contactById.get(details?.manufacturerId)
+  const subject = bounded(details?.subject, 180)
+  const message = bounded(details?.message, 2500)
+  if (!contact?.email || details?.approved !== true || !subject || /[\r\n]/.test(subject) || !message) {
+    return json({ message: 'Select a manufacturer with an email contact and approve the visible message before sending.' }, 400)
+  }
+
+  const now = Date.now()
+  const recent = (recentPartsAttempts.get(delivery.userId) || []).filter(time => now - time < 60 * 60_000)
+  if (recent.length >= 5) return json({ message: 'You have sent several requests recently. Try again in an hour.' }, 429)
+  recentPartsAttempts.set(delivery.userId, [...recent, now])
+
+  const payload = {
+    from: 'Theseus Parts <' + delivery.sender + '>',
+    to: [contact.email],
+    reply_to: delivery.userEmail,
+    subject, text: message
+  }
+  // A stable key lets the provider deduplicate retries of the reviewed message.
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(payload)))
+  const idempotencyKey = 'theseus-parts/' + Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'authorization': 'Bearer ' + env.RESEND_API_KEY, 'content-type': 'application/json', 'idempotency-key': idempotencyKey },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(12_000)
+    })
+    if (!response.ok) {
+      if (response.status >= 500 || response.status === 409) {
+        return json({ message: 'Sending could not be confirmed. Retry with the same message to avoid duplicates.' }, 502)
+      }
+      return json({ message: 'The email service did not accept the request. You can use the manufacturer’s contact route instead.' }, 502)
+    }
+    const result = await response.json()
+    if (!result.id) throw new Error('No provider confirmation')
+    return json({ recipient: contact.email, reference: result.id })
+  } catch {
+    return json({ message: 'Sending could not be confirmed. Retry with the same message to avoid duplicates.' }, 502)
+  }
+}
+
 function bounded(value, limit) {
   return typeof value === 'string' ? value.trim().slice(0, limit) : ''
 }
@@ -72,6 +176,18 @@ async function generateGuide(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
+    if (url.pathname === '/api/parts/status' && request.method === 'GET') {
+      const delivery = resolvePartsDelivery(request, env)
+      return json({
+        contacts: manufacturerContacts,
+        delivery: delivery.mode,
+        ...(delivery.mode === 'ready' && { replyTo: delivery.userEmail }),
+        ...(delivery.mode === 'sign-in' && { signIn: '/signin-with-chatgpt?return_to=%2F%23parts-tools' })
+      })
+    }
+    if (url.pathname === '/api/parts/send' && request.method === 'POST') {
+      return sendPartsRequest(request, env, resolvePartsDelivery(request, env))
+    }
     if (url.pathname === '/api/guides') {
       if (request.method !== 'POST') return json({ message: 'Use POST to create a guide.' }, 405)
       return generateGuide(request, env)
